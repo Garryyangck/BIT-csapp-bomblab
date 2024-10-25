@@ -406,29 +406,36 @@ Disassembly of section .text:
   400f96:	c3                   	retq   
   400f97:	e8 64 fb ff ff       	callq  400b00 <__stack_chk_fail@plt>
 
-0000000000400f9c <func4>:
+0000000000400f9c <func4>: # %eax = a, %edi = var1, %esi = var2, %edx = var3, %ecx = var4
+  # initial: var1 = first input, var2 = 0, var3 = 14
+  # second: var1 = first input, var2 = 8, var3 = 14
+  # third: var1 = first input, var2 = 12, var3 = 14
+  # fourth: var1 = first input, var2 = 12, var3 = 12
   400f9c:	48 83 ec 08          	sub    $0x8,%rsp
-  400fa0:	89 d0                	mov    %edx,%eax
-  400fa2:	29 f0                	sub    %esi,%eax
-  400fa4:	89 c1                	mov    %eax,%ecx
-  400fa6:	c1 e9 1f             	shr    $0x1f,%ecx
-  400fa9:	01 c1                	add    %eax,%ecx
-  400fab:	d1 f9                	sar    %ecx
-  400fad:	01 f1                	add    %esi,%ecx
+  400fa0:	89 d0                	mov    %edx,%eax # a = var3
+  400fa2:	29 f0                	sub    %esi,%eax # a = var3 - var2
+  400fa4:	89 c1                	mov    %eax,%ecx # var4 = var3 - var2
+  400fa6:	c1 e9 1f             	shr    $0x1f,%ecx # var4 = sign of var4
+  400fa9:	01 c1                	add    %eax,%ecx # var4 = var3 - var2 + sign of (var3 - var2)
+  400fab:	d1 f9                	sar    %ecx # var4 >>= 1
+  400fad:	01 f1                	add    %esi,%ecx # var4 += var2 (initially, var4 = 7; secondly, var4 = 11; thirdly, var4 = 13; fourthly, var4 = 12)
   400faf:	39 f9                	cmp    %edi,%ecx
   400fb1:	7f 0e                	jg     400fc1 <func4+0x25>
-  400fb3:	b8 00 00 00 00       	mov    $0x0,%eax
+  400fb3:	b8 00 00 00 00       	mov    $0x0,%eax # a = 0
   400fb8:	39 f9                	cmp    %edi,%ecx
   400fba:	7c 11                	jl     400fcd <func4+0x31>
+  # var4 = var1, return a = 0
   400fbc:	48 83 c4 08          	add    $0x8,%rsp
-  400fc0:	c3                   	retq   
-  400fc1:	8d 51 ff             	lea    -0x1(%rcx),%edx
+  400fc0:	c3                   	retq
+  # var4 > var1, here a = var3 - var2
+  400fc1:	8d 51 ff             	lea    -0x1(%rcx),%edx # var3 = var4 - 1
   400fc4:	e8 d3 ff ff ff       	callq  400f9c <func4>
-  400fc9:	01 c0                	add    %eax,%eax
+  400fc9:	01 c0                	add    %eax,%eax # a = 2*a
   400fcb:	eb ef                	jmp    400fbc <func4+0x20>
-  400fcd:	8d 71 01             	lea    0x1(%rcx),%esi
+  # var4 < var1, here a = 0
+  400fcd:	8d 71 01             	lea    0x1(%rcx),%esi # var2 = var4 + 1
   400fd0:	e8 c7 ff ff ff       	callq  400f9c <func4>
-  400fd5:	8d 44 00 01          	lea    0x1(%rax,%rax,1),%eax
+  400fd5:	8d 44 00 01          	lea    0x1(%rax,%rax,1),%eax # a = 2*a + 1
   400fd9:	eb e1                	jmp    400fbc <func4+0x20>
 
 0000000000400fdb <phase_4>:
@@ -439,22 +446,25 @@ Disassembly of section .text:
   400fed:	31 c0                	xor    %eax,%eax
   400fef:	48 8d 4c 24 04       	lea    0x4(%rsp),%rcx
   400ff4:	48 89 e2             	mov    %rsp,%rdx
-  400ff7:	be cf 25 40 00       	mov    $0x4025cf,%esi
+  400ff7:	be cf 25 40 00       	mov    $0x4025cf,%esi # '%d %d'
   400ffc:	e8 9f fb ff ff       	callq  400ba0 <__isoc99_sscanf@plt>
-  401001:	83 f8 02             	cmp    $0x2,%eax
+  401001:	83 f8 02             	cmp    $0x2,%eax # explode if return value of sscanf is not 2
   401004:	75 06                	jne    40100c <phase_4+0x31>
-  401006:	83 3c 24 0e          	cmpl   $0xe,(%rsp)
+  401006:	83 3c 24 0e          	cmpl   $0xe,(%rsp) # explode if the first input number > 14
   40100a:	76 05                	jbe    401011 <phase_4+0x36>
   40100c:	e8 36 04 00 00       	callq  401447 <explode_bomb>
-  401011:	ba 0e 00 00 00       	mov    $0xe,%edx
-  401016:	be 00 00 00 00       	mov    $0x0,%esi
-  40101b:	8b 3c 24             	mov    (%rsp),%edi
+  # init params and call func4
+  401011:	ba 0e 00 00 00       	mov    $0xe,%edx # %rdx = 14
+  401016:	be 00 00 00 00       	mov    $0x0,%esi # %rsi = 0
+  40101b:	8b 3c 24             	mov    (%rsp),%edi # %rdi = first input number
   40101e:	e8 79 ff ff ff       	callq  400f9c <func4>
-  401023:	83 f8 03             	cmp    $0x3,%eax
+  # judge
+  401023:	83 f8 03             	cmp    $0x3,%eax # explode if %rax != 3
   401026:	75 07                	jne    40102f <phase_4+0x54>
-  401028:	83 7c 24 04 03       	cmpl   $0x3,0x4(%rsp)
+  401028:	83 7c 24 04 03       	cmpl   $0x3,0x4(%rsp) # explode if the second input number != 3
   40102d:	74 05                	je     401034 <phase_4+0x59>
   40102f:	e8 13 04 00 00       	callq  401447 <explode_bomb>
+  # after judge
   401034:	48 8b 44 24 08       	mov    0x8(%rsp),%rax
   401039:	64 48 33 04 25 28 00 	xor    %fs:0x28,%rax
   401040:	00 00 
