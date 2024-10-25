@@ -318,24 +318,27 @@ Disassembly of section .text:
   400e90:	64 48 8b 04 25 28 00 	mov    %fs:0x28,%rax
   400e97:	00 00 
   400e99:	48 89 44 24 18       	mov    %rax,0x18(%rsp)
-  400e9e:	31 c0                	xor    %eax,%eax
+  400e9e:	31 c0                	xor    %eax,%eax # clear %rax
   400ea0:	48 89 e6             	mov    %rsp,%rsi
   400ea3:	e8 c1 05 00 00       	callq  401469 <read_six_numbers>
-  400ea8:	83 3c 24 00          	cmpl   $0x0,(%rsp)
+  400ea8:	83 3c 24 00          	cmpl   $0x0,(%rsp) # explode if the first input number is less than 0
   400eac:	78 07                	js     400eb5 <phase_2+0x2a>
-  400eae:	bb 01 00 00 00       	mov    $0x1,%ebx
-  400eb3:	eb 11                	jmp    400ec6 <phase_2+0x3b>
+  400eae:	bb 01 00 00 00       	mov    $0x1,%ebx # init %rbx by 0x1
+  400eb3:	eb 11                	jmp    400ec6 <phase_2+0x3b> # goto loop
   400eb5:	e8 8d 05 00 00       	callq  401447 <explode_bomb>
   400eba:	eb f2                	jmp    400eae <phase_2+0x23>
-  400ebc:	48 83 c3 01          	add    $0x1,%rbx
-  400ec0:	48 83 fb 06          	cmp    $0x6,%rbx
+  # test
+  400ebc:	48 83 c3 01          	add    $0x1,%rbx # %rbx += 1
+  400ec0:	48 83 fb 06          	cmp    $0x6,%rbx # if (%rbx == 6) break;
   400ec4:	74 12                	je     400ed8 <phase_2+0x4d>
-  400ec6:	89 d8                	mov    %ebx,%eax
-  400ec8:	03 44 9c fc          	add    -0x4(%rsp,%rbx,4),%eax
-  400ecc:	39 04 9c             	cmp    %eax,(%rsp,%rbx,4)
-  400ecf:	74 eb                	je     400ebc <phase_2+0x31>
+  # loop
+  400ec6:	89 d8                	mov    %ebx,%eax # init %rax with %rbx
+  400ec8:	03 44 9c fc          	add    -0x4(%rsp,%rbx,4),%eax # %rax add with the previous number of (%rsp,%rbx,4)
+  400ecc:	39 04 9c             	cmp    %eax,(%rsp,%rbx,4) # compare %rax with (%rsp,%rbx,4)
+  400ecf:	74 eb                	je     400ebc <phase_2+0x31> # explode if not equals
   400ed1:	e8 71 05 00 00       	callq  401447 <explode_bomb>
   400ed6:	eb e4                	jmp    400ebc <phase_2+0x31>
+  # after loop
   400ed8:	48 8b 44 24 18       	mov    0x18(%rsp),%rax
   400edd:	64 48 33 04 25 28 00 	xor    %fs:0x28,%rax
   400ee4:	00 00 
