@@ -221,3 +221,131 @@ phase_5：
 
 
 
+## phase_6
+
+代码太多了，就不贴出来了…
+
+首先调用 read_six_numbers，可知需要输入 6 个整数。
+
+由于汇编代码过长，因此相较于直接阅读汇编代码，不如根据汇编代码，写出伪代码以便阅读：
+
+1. 读取输入的 6 个整数，存储到栈上：
+
+	```c
+	call <read_six_numbers> // 读取输入的 6 个整数
+	r12 = rsp
+	r13 = rsp // r12、r13 指向第一个数的地址
+	r14d = 0x0 // r14d 初始化为 0，以便后续计数
+	```
+
+2. 校验输入参数，每个数不能大于 6，且 6 个数互不相同：
+
+	```c
+	loop1:
+	rbp = r13;
+	eax = *r13; // eax 为当前 *r13 处取一个整数
+	eax -= 0x1;
+	if(eax > 0x5) { // 校验每个输入的数不能 > 6(之前eax-1了)
+	    call <explode_bomb>;
+	}
+	r14d += 0x1
+	if (r14d != 0x6) { // 检验6个数互不相同
+	    ebx = r14d; // ebx 初值为当前的 index
+	    while (1) { // 
+	        rax = ebx;
+	        eax = *(rsp + 4 * rax); // 取出 index 后面的一个数
+	        if (*rbp != eax) { // 如果当前 index 的数，和 index 后面的一个数不相同
+	            ebx += 0x1; // 继续向后遍历
+	            if (ebx > 0x5) { // 直到遍历完当前 index 后面的所有数
+	                r13 += 0x4; // 继续校验下一个 index 是否和下一个 index 后面的数相同
+	                goto loop1; // r14d++，继续遍历下一个 index 的数
+	                break;
+	           }
+	       }
+	        else {
+	            call <explode_bomb>;
+	       }
+	   }
+	}
+	```
+
+3. 完成校验后进入核心代码：
+
+	```c
+	if (r14d == 0x6) { // 校验完所有的输入数后
+	    
+	    rcx = r12 + 0x18; // 栈顶向上 24 位
+	    edx = 0x7; 
+	    do {
+	        eax = edx; // 把 eax 置为 7
+	        eax -= *r12; // 7 减去当前 r12 取一个整数
+	        *(r12) = eax; // 写入 stack
+	        r12 += 0x4; // 遍历下一个数
+	   	} while (rcx != r12); // 把所有数转化成 7-x
+	    
+	    esi = 0x0; // 用于遍历计数，类似于 index
+	    while (1) { // 无限循环，直到找到特定条件
+	        ecx = *(rsp + 4 * rsi); // 从栈中取出当前的输入数
+	        eax = 0x1;
+	        edx = 0x6032d0; // 链表“数组”的首地址
+	        if (ecx > 0x1) {
+	            do {
+	                rdx = *(rdx + 0x8); // 移动到链表的下一个节点
+	                eax += 0x1;
+	            } while (ecx != eax); // 重复直到 ecx 和 eax 相等
+	        }
+	        *(rsp + 8 * rsi + 0x20) = rdx; // 将第 input number 个节点的首地址存储到栈中，偏移量是 0x20
+	        rsi += 0x1; // 增加计数器
+	        if (rsi == 0x6) { // 遍历完所有输入的数之后：
+	            rbx = *(rsp + 0x20); // 偏移后的第一个节点，即第 input[0] 个节点
+	            rax = *(rsp + 0x28); // 第 input[1] 个节点
+	            *(rbx + 0x8) = rax; // 第 input[0] 节点.next = 第 input[1] 节点
+	            rdx = *(rsp + 0x30); // 第 input[2] 个节点
+	            *(rax + 0x8) = rdx; // 第 input[1] 节点.next = 第 input[2] 节点
+	            rax = *(rsp + 0x38); // 第 input[3] 个节点
+	            *(rdx + 0x8) = rax; // 第 input[2] 节点.next = 第 input[4] 节点
+	            rdx = *(rsp + 0x40); // 第 input[4] 个节点
+	            *(rax + 0x8) = rdx; // 第 input[3] 节点.next = 第 input[4] 节点
+	            rax = *(rsp + 0x48); // 第 input[5] 个节点
+	            *(rdx + 0x8) = rax; // 第 input[4] 节点.next = 第 input[5] 节点
+	            *(rax + 0x8) = 0x0; // 第 input[5] 节点.next = null
+	            ebp = 0x5; // 设置 ebp 为 5，可能用于计数
+	            loop2:
+	            rax = *(rbx + 0x8); // 第 input[0] 个节点.next
+	            eax = *(rax); // 第 input[0] 个节点.next.val
+	            if (*rbx >= eax) { // 前一个节点.val >= 其.next.val
+	                rbx = *(rbx + 0x8); // rbx 移动到下一个节点
+	                ebp -= 0x1; // 减少 ebp 的值
+	                if (ebp == 0x0) {
+	                    retq;
+	                } else { // 如果 ebp 不为 0
+	                    goto loop2; // 跳转到 loop2 继续循环
+	                }
+	            } else { // 如果 rbx 的值小于 eax 的值
+	                call <explode_bomb>; // 调用 explode_bomb 函数，可能是某种错误处理
+	            }
+	        }
+	    }
+	}
+	```
+
+4. 看一眼链表“数组”的首地址 0x6032d0 后面的链表结构：
+
+	![image-20241025224856507](report.assets/image-20241025224856507.png)
+
+	可以看到每个 node 占 16 字节，包括两个 int 和一个 next 指针，两个 int 分别是 val 和 num。
+
+	每一个节点的 val 分别为 `[0x27a, 0x353, 0x399, 0x136, 0x249, 0x08a]`
+
+5. 核心代码的逻辑就是先把输入的 6 个数映射为 7 - x；然后重组链表，重组的 node 顺序就是映射为 7 - x 后的数组顺序；最后进行校验，要求重组后的链表节点 val 递减。
+
+6. 这下简单了，各节点的 val 顺序由大到小排序是 `3 2 1 5 4 6`，这是 7 - x 映射后的顺序，那么我们输入的就是 `4 5 6 2 3 1`。
+
+7. 成功完成 bomblab：
+
+	![image-20241025225808446](report.assets/image-20241025225808446.png)
+
+
+
+
+
