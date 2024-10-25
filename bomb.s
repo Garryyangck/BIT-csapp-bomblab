@@ -481,29 +481,33 @@ Disassembly of section .text:
   401060:	31 c0                	xor    %eax,%eax
   401062:	48 8d 4c 24 04       	lea    0x4(%rsp),%rcx
   401067:	48 89 e2             	mov    %rsp,%rdx
-  40106a:	be cf 25 40 00       	mov    $0x4025cf,%esi
+  40106a:	be cf 25 40 00       	mov    $0x4025cf,%esi # '%d %d'
   40106f:	e8 2c fb ff ff       	callq  400ba0 <__isoc99_sscanf@plt>
   401074:	83 f8 01             	cmp    $0x1,%eax
   401077:	7e 57                	jle    4010d0 <phase_5+0x82>
-  401079:	8b 04 24             	mov    (%rsp),%eax
-  40107c:	83 e0 0f             	and    $0xf,%eax
-  40107f:	89 04 24             	mov    %eax,(%rsp)
-  401082:	83 f8 0f             	cmp    $0xf,%eax
+  # core
+  401079:	8b 04 24             	mov    (%rsp),%eax # %eax = first input
+  40107c:	83 e0 0f             	and    $0xf,%eax # %eax &= 0xf, get the lower 4 bits of first input
+  40107f:	89 04 24             	mov    %eax,(%rsp) # write back to stack
+  401082:	83 f8 0f             	cmp    $0xf,%eax # explode if %eax = 15
   401085:	74 2f                	je     4010b6 <phase_5+0x68>
-  401087:	b9 00 00 00 00       	mov    $0x0,%ecx
-  40108c:	ba 00 00 00 00       	mov    $0x0,%edx
-  401091:	83 c2 01             	add    $0x1,%edx
+  401087:	b9 00 00 00 00       	mov    $0x0,%ecx # %ecx = 0
+  40108c:	ba 00 00 00 00       	mov    $0x0,%edx # %edx = 0
+  # %eax != 0xf
+  401091:	83 c2 01             	add    $0x1,%edx # %edx += 1
   401094:	48 98                	cltq   
   401096:	8b 04 85 80 24 40 00 	mov    0x402480(,%rax,4),%eax
-  40109d:	01 c1                	add    %eax,%ecx
+  40109d:	01 c1                	add    %eax,%ecx # %ecx += %eax
   40109f:	83 f8 0f             	cmp    $0xf,%eax
   4010a2:	75 ed                	jne    401091 <phase_5+0x43>
+  # %eax = 0xf
   4010a4:	c7 04 24 0f 00 00 00 	movl   $0xf,(%rsp)
-  4010ab:	83 fa 03             	cmp    $0x3,%edx
+  4010ab:	83 fa 03             	cmp    $0x3,%edx # explode if %edx != 3
   4010ae:	75 06                	jne    4010b6 <phase_5+0x68>
-  4010b0:	39 4c 24 04          	cmp    %ecx,0x4(%rsp)
+  4010b0:	39 4c 24 04          	cmp    %ecx,0x4(%rsp) # explode if second input != %ecx
   4010b4:	74 05                	je     4010bb <phase_5+0x6d>
   4010b6:	e8 8c 03 00 00       	callq  401447 <explode_bomb>
+  # after
   4010bb:	48 8b 44 24 08       	mov    0x8(%rsp),%rax
   4010c0:	64 48 33 04 25 28 00 	xor    %fs:0x28,%rax
   4010c7:	00 00 
