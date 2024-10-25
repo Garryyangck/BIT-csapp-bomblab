@@ -356,37 +356,48 @@ Disassembly of section .text:
   400f05:	31 c0                	xor    %eax,%eax
   400f07:	48 8d 4c 24 04       	lea    0x4(%rsp),%rcx
   400f0c:	48 89 e2             	mov    %rsp,%rdx
-  400f0f:	be cf 25 40 00       	mov    $0x4025cf,%esi
+  400f0f:	be cf 25 40 00       	mov    $0x4025cf,%esi # sscanf fomat is: '%d %d'
   400f14:	e8 87 fc ff ff       	callq  400ba0 <__isoc99_sscanf@plt>
-  400f19:	83 f8 01             	cmp    $0x1,%eax
+  400f19:	83 f8 01             	cmp    $0x1,%eax # explode if %rax is less or equals 1, which means function sscanf failed to execute
   400f1c:	7e 10                	jle    400f2e <phase_3+0x3b>
-  400f1e:	83 3c 24 07          	cmpl   $0x7,(%rsp)
+  400f1e:	83 3c 24 07          	cmpl   $0x7,(%rsp) # explode if the first input number is greater than 7 or less than 0
   400f22:	77 42                	ja     400f66 <phase_3+0x73>
   400f24:	8b 04 24             	mov    (%rsp),%eax
-  400f27:	ff 24 c5 40 24 40 00 	jmpq   *0x402440(,%rax,8)
+  400f27:	ff 24 c5 40 24 40 00 	jmpq   *0x402440(,%rax,8) # switch the first input number
   400f2e:	e8 14 05 00 00       	callq  401447 <explode_bomb>
   400f33:	eb e9                	jmp    400f1e <phase_3+0x2b>
+  # case 1: %eax = 0x235
   400f35:	b8 35 02 00 00       	mov    $0x235,%eax
   400f3a:	eb 3b                	jmp    400f77 <phase_3+0x84>
+  # case 2: %eax = 0x1a7
   400f3c:	b8 a7 01 00 00       	mov    $0x1a7,%eax
   400f41:	eb 34                	jmp    400f77 <phase_3+0x84>
+  # case 3: %eax = 0x22b
   400f43:	b8 2b 02 00 00       	mov    $0x22b,%eax
   400f48:	eb 2d                	jmp    400f77 <phase_3+0x84>
+  # case 4: %eax = 0x6c
   400f4a:	b8 6c 00 00 00       	mov    $0x6c,%eax
   400f4f:	eb 26                	jmp    400f77 <phase_3+0x84>
+  # case 5: %eax = 0x2f1
   400f51:	b8 f1 02 00 00       	mov    $0x2f1,%eax
   400f56:	eb 1f                	jmp    400f77 <phase_3+0x84>
+  # case 6: %eax = 0x3e
   400f58:	b8 3e 00 00 00       	mov    $0x3e,%eax
   400f5d:	eb 18                	jmp    400f77 <phase_3+0x84>
+  # case 7: %eax = 0x248
   400f5f:	b8 48 02 00 00       	mov    $0x248,%eax
   400f64:	eb 11                	jmp    400f77 <phase_3+0x84>
+  # explode
   400f66:	e8 dc 04 00 00       	callq  401447 <explode_bomb>
+  # default: %eax = 0, but it won't go to default, because it would explode in the first place
   400f6b:	b8 00 00 00 00       	mov    $0x0,%eax
   400f70:	eb 05                	jmp    400f77 <phase_3+0x84>
+  # case 0: %eax = immediate number 0x121
   400f72:	b8 21 01 00 00       	mov    $0x121,%eax
-  400f77:	39 44 24 04          	cmp    %eax,0x4(%rsp)
+  400f77:	39 44 24 04          	cmp    %eax,0x4(%rsp) # cmp the second input number with %eax, explode if they are not equals
   400f7b:	74 05                	je     400f82 <phase_3+0x8f>
   400f7d:	e8 c5 04 00 00       	callq  401447 <explode_bomb>
+  # after switch
   400f82:	48 8b 44 24 08       	mov    0x8(%rsp),%rax
   400f87:	64 48 33 04 25 28 00 	xor    %fs:0x28,%rax
   400f8e:	00 00 
