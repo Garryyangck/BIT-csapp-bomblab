@@ -634,46 +634,53 @@ Disassembly of section .text:
   40121b:	e8 e0 f8 ff ff       	callq  400b00 <__stack_chk_fail@plt>
 
 0000000000401220 <fun7>:
-  401220:	48 85 ff             	test   %rdi,%rdi
+  # check nullptr
+  401220:	48 85 ff             	test   %rdi,%rdi # return 0xffffffff if %rdi is a nullptr
   401223:	74 34                	je     401259 <fun7+0x39>
+  # after check
   401225:	48 83 ec 08          	sub    $0x8,%rsp
-  401229:	8b 17                	mov    (%rdi),%edx
+  401229:	8b 17                	mov    (%rdi),%edx # %edx = root.val
   40122b:	39 f2                	cmp    %esi,%edx
   40122d:	7f 0e                	jg     40123d <fun7+0x1d>
-  40122f:	b8 00 00 00 00       	mov    $0x0,%eax
+  # root.val <= input
+  40122f:	b8 00 00 00 00       	mov    $0x0,%eax # rax = 0
   401234:	39 f2                	cmp    %esi,%edx
   401236:	75 12                	jne    40124a <fun7+0x2a>
+  # root.val == input, return
   401238:	48 83 c4 08          	add    $0x8,%rsp
   40123c:	c3                   	retq   
-  40123d:	48 8b 7f 08          	mov    0x8(%rdi),%rdi
+  # root.val > input
+  40123d:	48 8b 7f 08          	mov    0x8(%rdi),%rdi # root = root.left
   401241:	e8 da ff ff ff       	callq  401220 <fun7>
-  401246:	01 c0                	add    %eax,%eax
+  401246:	01 c0                	add    %eax,%eax # rax = 2 * rax
   401248:	eb ee                	jmp    401238 <fun7+0x18>
-  40124a:	48 8b 7f 10          	mov    0x10(%rdi),%rdi
+  # root.val < input
+  40124a:	48 8b 7f 10          	mov    0x10(%rdi),%rdi # root = root.right
   40124e:	e8 cd ff ff ff       	callq  401220 <fun7>
-  401253:	8d 44 00 01          	lea    0x1(%rax,%rax,1),%eax
-  401257:	eb df                	jmp    401238 <fun7+0x18>
+  401253:	8d 44 00 01          	lea    0x1(%rax,%rax,1),%eax # rax = 2 * rax + 1
+  401257:	eb df                	jmp    401238 <fun7+0x18> # return
   401259:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
   40125e:	c3                   	retq   
 
 000000000040125f <secret_phase>:
   40125f:	53                   	push   %rbx
-  401260:	e8 43 02 00 00       	callq  4014a8 <read_line>
+  401260:	e8 43 02 00 00       	callq  4014a8 <read_line> # read input with one line
   401265:	ba 0a 00 00 00       	mov    $0xa,%edx
   40126a:	be 00 00 00 00       	mov    $0x0,%esi
   40126f:	48 89 c7             	mov    %rax,%rdi
-  401272:	e8 09 f9 ff ff       	callq  400b80 <strtol@plt>
-  401277:	48 89 c3             	mov    %rax,%rbx
-  40127a:	8d 40 ff             	lea    -0x1(%rax),%eax
-  40127d:	3d e8 03 00 00       	cmp    $0x3e8,%eax # explode if %eax > 0x3e8
+  401272:	e8 09 f9 ff ff       	callq  400b80 <strtol@plt> # transform input into an integer
+  401277:	48 89 c3             	mov    %rax,%rbx # let %rbx = input integer
+  40127a:	8d 40 ff             	lea    -0x1(%rax),%eax # %rax = %rax - 1
+  40127d:	3d e8 03 00 00       	cmp    $0x3e8,%eax # explode if %eax > 0x3e8 = 1000
   401282:	77 27                	ja     4012ab <secret_phase+0x4c>
-  401284:	89 de                	mov    %ebx,%esi
-  401286:	bf f0 30 60 00       	mov    $0x6030f0,%edi
+  401284:	89 de                	mov    %ebx,%esi # %rsi = input integer
+  401286:	bf f0 30 60 00       	mov    $0x6030f0,%edi # %rdi point to a 'strange' address 0x6030f0
   40128b:	e8 90 ff ff ff       	callq  401220 <fun7>
-  401290:	83 f8 04             	cmp    $0x4,%eax
+  401290:	83 f8 04             	cmp    $0x4,%eax # success if return value of fun7 = 4
   401293:	74 05                	je     40129a <secret_phase+0x3b>
   401295:	e8 ad 01 00 00       	callq  401447 <explode_bomb>
-  40129a:	bf 08 24 40 00       	mov    $0x402408,%edi
+  # success
+  40129a:	bf 08 24 40 00       	mov    $0x402408,%edi # print 'Wow! You've defused the secret stage!'
   40129f:	e8 3c f8 ff ff       	callq  400ae0 <puts@plt>
   4012a4:	e8 2d 03 00 00       	callq  4015d6 <phase_defused>
   4012a9:	5b                   	pop    %rbx
@@ -919,7 +926,7 @@ Disassembly of section .text:
   4015e1:	00 00 
   4015e3:	48 89 44 24 68       	mov    %rax,0x68(%rsp)
   4015e8:	31 c0                	xor    %eax,%eax
-  4015ea:	83 3d 7b 21 20 00 06 	cmpl   $0x6,0x20217b(%rip)        # 60376c <num_input_strings>
+  4015ea:	83 3d 7b 21 20 00 06 	cmpl   $0x6,0x20217b(%rip)        # 60376c <num_input_strings>, check if you have finished all 6 phases
   4015f1:	74 15                	je     401608 <phase_defused+0x32>
   4015f3:	48 8b 44 24 68       	mov    0x68(%rsp),%rax
   4015f8:	64 48 33 04 25 28 00 	xor    %fs:0x28,%rax
@@ -927,6 +934,7 @@ Disassembly of section .text:
   401601:	75 67                	jne    40166a <phase_defused+0x94>
   401603:	48 83 c4 78          	add    $0x78,%rsp
   401607:	c3                   	retq   
+  # finished all 6 phases
   401608:	4c 8d 44 24 10       	lea    0x10(%rsp),%r8
   40160d:	48 8d 4c 24 0c       	lea    0xc(%rsp),%rcx
   401612:	48 8d 54 24 08       	lea    0x8(%rsp),%rdx

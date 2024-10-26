@@ -347,5 +347,107 @@ phase_5：
 
 
 
+## secret_phase
+
+找到 secret_phase 之后，首先要找出怎么样才能触发 secret_phase，经过查找发现只有 phase_defused 函数中调用了 secret_phase。
+
+phase_defused：
+
+![image-20241025230704597](report.assets/image-20241025230704597.png)
+
+可以看到首先会检查你是不是全部阶段都完成了。完成后的代码中有一个 strings_not_equals 函数的调用，根据 phase_1 的经验，这肯定是在校验我们的密钥了，往上几行可以看到 `mov   $0x402622,%esi` 给 strings_not_equals 函数赋值第二个参数，那么显然 0x402622 就是密钥的首地址了，让我康康：
+
+![image-20241025231005709](report.assets/image-20241025231005709.png)
+
+OK，拿到密钥 `urxvt`，按照实验文档的提示在 phase_4 的解后加上后，再次运行：
+
+![image-20241025231321947](report.assets/image-20241025231321947.png)
+
+好！密钥正确，但是还需要解开 secret_phase 的输入…
+
+简单分析 secret_phase 的代码：
+
+![image-20241026140213607](report.assets/image-20241026140213607.png)
+
+可以看到我们输入的一行会被强制转为一个整数，因此我们的输入就应该是一个整数。
+
+这个整数 - 1 <= 1000，且 > 0（否则 ja 转为 unsigned 时肯定比 1000 大），得到我们输入的整数范围是 `0 < input <= 1001`。
+
+secret_phase 调用了一个函数 fun7，最后如果 fun7 的返回值是 4，则成功。
+
+secret_phase 给 fun7 传递的参数有两个，我们的输入，和一个神秘的地址。
+
+我们来看一下这个 0x6030f0 究竟是什么，经过尝试后查看其后 512 字节：
+
+![image-20241026141246900](report.assets/image-20241026141246900.png)
+
+![image-20241026141306772](report.assets/image-20241026141306772.png)
+
+可以看到 0x6030f0 后是一系列名为 "n" 的结构体，每一个结构体的大小是 24 字节。阅读第一个结构体对象 n1，其第一行存储的是 0x24；第二行存储的是 0x603110，这正好是 n21 的首地址；第三行存储的是 0x603130，这正好是 n22 的首地址。由此可以推断出，这个 n 结构体可能是一个二叉树的节点，其结构类似于：
+
+```c
+typedef struct {
+    int val; // 为了对其，因此 int "占了" 8 个字节
+    n* left;
+    n* right;
+} n;
+```
+
+n1 只有一个，n2 开头有 2 个，n3 开头有 4 个，n4 开头有 8 个，这进一步验证我们的猜想。因此 fun7 的第二个参数是一棵二叉树根节点的指针！
+
+fun7 的参数如下：
+
+```c
+int fun7(n* root/* %rdi */, int input/* %rsi */) {...}
+```
+
+我们再来分析 fun7 的代码：
+
+![image-20241026143219033](report.assets/image-20241026143219033.png)
+
+知道传入的参数是二叉树根节点后，一切都变得简单起来。这不就是在二叉搜索树中查找 val = input 的节点吗，甚至可以写出其 c 代码：
+
+```c
+int fun7(n* root, int input) {
+    if (root == nullptr) {
+        return 0xffffffff;
+    }
+    int rax;
+    if (root->val > input) {
+        rax = fun7(root->left, input);
+        rax = 2 * rax;
+    } else {
+        rax = 0;
+        if (root->val < input) {
+            rax = fun7(root->right, input);
+            rax = 2 * rax + 1;
+        }
+    }
+    return rax;
+}
+```
+
+我们需要最后 fun7 返回 4，一种可以到达 4 的方式是：0 -> 1 -> 2 -> 4，分别对应的判断是 input == val, input > val, input < val, input < val，我们正常的顺序是反过来的，因此我们的输入应该走过的路径是 left, left, right, 命中。
+
+> 由于给出的二叉树只有 4 层，因此必须在 4 步之内让 0 变为 4，上述的 `0 -> 1 -> 2 -> 4`，是唯一的可行方案，因此本题的解唯一。
+
+观察我们上面用 gdb 打印的二叉树节点图，从根节点开始进行 `left, left, right` 的操作，n1 -> n21 -> n31 -> n42，n42.val = 7，因此本题的唯一解是 7。
+
+![image-20241026145021222](report.assets/image-20241026145021222.png)
+
+成功，自此 bomblab 完全完成！
+
+> solution.txt: 
+>
+> ```c
+> Slave, thou hast slain me. Villain, take my purse.
+> 1 2 4 7 11 16
+> 6 62
+> 12 3 urxvt
+> 2147483634 35
+> 4 5 6 2 3 1
+> 7
+> ```
+
 
 
